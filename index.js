@@ -11,6 +11,8 @@ const bodyParser = require('body-parser');
 const logger = require('morgan');
 const nodemailer = require("nodemailer");
 const cookieParser = require('cookie-parser');
+const passport = require('passport');
+const bcrypt = require('bcrypt');
 
 const Infra = require('./models/Infra');
 const Fee = require('./models/Fee');
@@ -2667,43 +2669,6 @@ status:1
     }
   });
 });
-
-// router.post('/getDocs', function (req, res) {
-//   //res.send("hi");
-//   const {
-//     token,
-//     bank_id
-//   } = req.body;
-//   Infra.findOne({
-//     token
-//   }, function (err, user) {
-//     if (err) {
-//       res.status(401)
-//         .json({
-//           error: err
-//         });
-//     } else {
-//       const user_id = user._id;
-//       Document.find({
-//         bank_id
-//       }, function (err, rules) {
-//         ;
-//         if (err) {
-//           res.status(404)
-//             .json({
-//               error: err
-//             });
-//         } else {
-//           res.status(200)
-//             .json({
-//               docs: rules
-//             });
-//         }
-//       });
-
-//     }
-//   });
-// });
 
 router.post('/bankStatus', function (req, res) {
   //res.send("hi");
@@ -5455,34 +5420,38 @@ status:1
 
 });
 
-router.post('/createEndUser', (req, res) => {
-  let data = new EndUser();
-  const {
-    name,
-    email,
-    mobileNumber,
-    password,
-    address
-  } = req.body;
-
-    data.name = name;
-    data.email = email;
-    data.mobileNumber = mobileNumber;
-    data.password = password;
-    data.address = address;
-
-    /* return res.status(200).json({
-      success: "Signup Successful"
-    }); */
-
-    data.save((err) => {
-      if (err) return res.json({
-        error: 'Email already exists'
+router.post('/createEndUser', async (req, res) => {
+  try {
+    let getUserByEmail = await EndUser.findOne({ email: req.body.email });
+    if (getUserByEmail) {
+      return res.status(400).send("User already exists");
+    } else {
+      const endUser = new EndUser({
+        email: req.body.email,
+        name: req.body.name,
+        mobileNumber: req.body.mobileNumber,
+        password: req.body.password,
+        address: req.body.address
       });
-      return res.status(200).json({
-        success: "Signup Successful"
-      });
+      const salt = await bcrypt.genSalt(10);
+      endUser.password = await bcrypt.hash(endUser.password, salt);
+      await endUser.save();
+      return res.status(200).send("Signup Successfull");
+    }
+  } catch (error) {
+    console.error('Signup Error', error);
+  }
+});
+
+router.post('/loginEndUser', function(req, res, next) {
+  passport.authenticate('local', function(err, user, info) {
+    if (err) { return next(err); }
+    if (!user) { return res.redirect('/login'); }
+    req.logIn(user, function(err) {
+      if (err) { return next(err); }
+      return res.redirect('/users/' + user.username);
     });
+  })(req, res, next);
 });
 
 router.get('/clearDb', function (req, res) {
