@@ -12,6 +12,7 @@ const logger = require('morgan');
 const nodemailer = require("nodemailer");
 const cookieParser = require('cookie-parser');
 const passport = require('passport');
+const local = require('passport-local').Strategy;
 const bcrypt = require('bcrypt');
 
 const Infra = require('./models/Infra');
@@ -5443,13 +5444,14 @@ router.post('/createEndUser', async (req, res) => {
   }
 });
 
+// From Passport.js docs
 router.post('/loginEndUser', function(req, res, next) {
   passport.authenticate('local', function(err, user, info) {
     if (err) { return next(err); }
     if (!user) { return res.redirect('/login'); }
     req.logIn(user, function(err) {
       if (err) { return next(err); }
-      return res.redirect('/users/' + user.username);
+      return res.redirect('/login' + user.username);
     });
   })(req, res, next);
 });
